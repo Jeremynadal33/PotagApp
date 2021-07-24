@@ -1,0 +1,8 @@
+legume,variete,nombre,poids,date,photopath
+courgette,blanche,1,680,2021-06-21 00:00:00,None
+courgette,blanche,1,680,2021-06-22 00:00:00,None
+courgette,blanche,1,680,2021-06-20 00:00:00,None
+courgette,ronde,1,680,2021-06-21 00:00:00,None
+tomate,,3,180,2021-06-21 00:00:00,None
+tomate,,5,480,2021-06-20 00:00:00,None
+tomate,,1,300,2021-06-25,
