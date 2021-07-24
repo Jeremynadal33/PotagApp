@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     from streamlit.report_thread import get_report_ctx
     from streamlit.server.server import Server
 
-home_path = ["/Users/jeremynadal/Documents/potagerApp/PotagApp/data/recoltes.csv","/home/ubuntu/PotagApp/data/database.csv"]
+home_path = ["/Users/jeremynadal/Documents/potagerApp/PotagApp/data/recoltes.csv","/home/ubuntu/PotagApp/data/recoltes.csv"]
 
 pd.options.plotting.backend = "plotly"
 ###################### FUNCTIONS #################
