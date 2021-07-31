@@ -14,6 +14,25 @@ def load_recoltes(path):
     data['date'] = pd.to_datetime(data['date'])
     return data
 
+
+def load_colors(path, recoltes) :
+    colors = pd.read_csv(path)
+    for legume in recoltes['legume']:
+        to_check = legume.lower()
+        if to_check[-1]=='s' : to_check = to_check[:-1]
+        for index in colors.index:
+            if colors['legume'][index] == to_check : colors['legume'][index] = legume
+
+    print(colors_to_discret_map(colors))
+    return colors
+
+def colors_to_discret_map(colors):
+    dict = {}
+    for index in colors.index :
+        dict[colors['legume'][index]] = colors['color'][index]
+
+    return dict
+
 def save_recolte(df_recoltes, recolte, file_path):
     to_append = {
         'legume' : recolte.get_legume(),
@@ -235,7 +254,6 @@ def get_KPIs(lon, lat, key):
     KPIs = KPIs.append(to_append, ignore_index = True)
 
     return KPIs
-
 
 
 def get_figs_KPIs(KPIs):

@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     from streamlit.report_thread import get_report_ctx
     from streamlit.server.server import Server
 
-home_path = ["/Users/jeremynadal/Documents/potagerApp/PotagApp/data/recoltes.csv","/home/ubuntu/PotagApp/data/recoltes.csv"]
+home_path = ["/Users/jeremynadal/Documents/potagerApp/PotagApp/","/home/ubuntu/PotagApp/"]
 
 pd.options.plotting.backend = "plotly"
 ###################### FUNCTIONS #################
@@ -146,7 +146,13 @@ def menu_recoltes(state):
 
     if not to_display.empty:
         st.write('Total des récoltes sur la période : '+str( to_display['poids'].sum() ))
-        fig = px.bar(to_display, x="date", y="poids", color="legume",text="variete", barmode="stack")
+        fig = px.bar(to_display,
+                     x="date",
+                     y="poids",
+                     color="legume",
+                     color_discrete_map=colors_to_discret_map(state.colors),
+                     text="variete",
+                     barmode="stack")
         fig.update_layout(
             xaxis=dict(
                 rangeselector=dict(
@@ -298,8 +304,10 @@ def main():
     state = _get_state()
     for path in home_path:
         if os.path.exists(path):
-            state.db_path = path
+            state.home_path = path
+            state.db_path = path + 'data/recoltes.csv'
             state.recoltes = load_recoltes(state.db_path)
+            state.colors = load_colors(path + 'data/colors.csv', state.recoltes)
 
     if state.db_path == None :
         st.error("Le chemin vers la bdd n'existe pas")
