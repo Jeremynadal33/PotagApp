@@ -23,7 +23,6 @@ def load_colors(path, recoltes) :
         for index in colors.index:
             if colors['legume'][index] == to_check : colors['legume'][index] = legume
 
-    print(colors_to_discret_map(colors))
     return colors
 
 def colors_to_discret_map(colors):
