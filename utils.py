@@ -33,14 +33,15 @@ def colors_to_discret_map(colors):
 
     return dict
 
-def save_recolte(df_recoltes, recolte, file_path):
+def save_recolte(df_recoltes, recolte, file_path, username):
     to_append = {
         'legume' : recolte.get_legume(),
         'date' : recolte.get_date(),
         'poids' : recolte.get_poids(),
         'variete' : recolte.get_variete(),
         'nombre' : recolte.get_nombre(),
-        'photopath' : recolte.get_photopath()
+        'photopath' : recolte.get_photopath(),
+        'user' : username
     }
     df_recoltes = df_recoltes.append(to_append, ignore_index = True)
     df_recoltes.to_csv(file_path, index = False)

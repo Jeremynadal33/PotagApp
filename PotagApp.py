@@ -253,7 +253,7 @@ def menu_recoltes(state):
                 if ( new_legume == '' or poids == 0 ) :
                     st.error("Attention, il faut spécifier un légume et le poids !")
                 else:
-                    state.recoltes  = save_recolte(state.recoltes, recolte, state.db_path )
+                    state.recoltes  = save_recolte(state.recoltes, recolte, state.db_path, state.current_user )
                     st.info("Récolte ajoutée avec succès !")
 
 
