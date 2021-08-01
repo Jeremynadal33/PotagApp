@@ -1,5 +1,6 @@
 import pandas as pd
 from classes import *
+from send_mail import *
 
 import requests
 import json
@@ -44,6 +45,36 @@ def save_recolte(df_recoltes, recolte, file_path):
     df_recoltes = df_recoltes.append(to_append, ignore_index = True)
     df_recoltes.to_csv(file_path, index = False)
     return df_recoltes
+
+
+def add_user(username, password, mail, city, df_users, file_path):
+    to_append = {
+        'username' : username,
+        'password' : password,
+        'mail' : mail,
+        'city' : city
+    }
+
+    df_users = df_users.append(to_append, ignore_index = True)
+    df_users.to_csv(file_path, index = False)
+    text = "Bienvenu à la PotagApp " + username + ',\n'
+    text += "Tu peux maintenant facilement suivre tes récoltes sur notre application.\n"
+    text += "Pour rappel, ton mot de passe est le suivant : " + password + '\n'
+    text += "Tu pourras modifier tes informations via l'appliation.\n\n"
+    text += "Jardines bien !"
+    send_mail(mail, "Bienvenu à la PotagApp", text)
+    return df_users
+
+def send_mail_retrieve_info(mail, users):
+    user = users[users['mail']==mail].reset_index(drop=True)
+
+    text = "Voici les informations reliées à cette adresse mail :\n"
+    text += "Nom d'utilisateur :" + user["username"][0] + '\n'
+    text += "Mot de passe :" + user["password"][0] + '\n'
+    text += "Ville favorite :" + str(user["city"][0]) + '\n'
+    text += "À bientôt sur la PotagApp !"
+    send_mail(mail, "Informations PotagApp", text)
+
 
 @st.cache
 def get_weather_from_city(city, key, spec = None, addons = '&units=metric'):

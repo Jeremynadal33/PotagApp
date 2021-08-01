@@ -3,6 +3,7 @@ import streamlit as st
 import numpy as np
 import time
 import os
+import re
 from PIL import Image
 
 from io import BytesIO
@@ -116,7 +117,21 @@ def _get_state(hash_funcs=None):
 
 def menu_home(state):
     st.write("## Bienvenu à la Potag'app \n")
-    st.image('data/backg.jpg')
+    ## user connection
+    cols = st.beta_columns([2,2,1,1])
+
+    with cols[0]:
+        username = st.text_input("Nom d'utilisateur:", value="nanou")
+    with cols[1]:
+        password = st.text_input("Password:", value="", type="password")
+
+
+    if username in state.users['username'].values and password in state.users['password'].values :
+        state.current_user = username
+
+    if state.current_user != None :
+        st.write('## Welcome back ' + state.current_user)
+    st.image(state.home_path + 'data/backg.jpg')
     st.write("#")
     st.write('Ici, tu peux voir où en sont tes récoltes et tes semis !')
     st.write("Tu peux aussi regarder combien il a plu récemment et si tu vas avoir besoin d'arroser")
@@ -124,119 +139,122 @@ def menu_home(state):
 
 def menu_recoltes(state):
     st.write("## Récoltes")
-
-    cols = st.beta_columns([1,1,1,1])
-    with cols[0]:
-        date_depuis = st.date_input('Depuis', date(date.today().year,1,1) )
-    with cols[1]:
-        date_jusqua = st.date_input("Jusqu'à", date(date.today().year,12,31) )
-    with cols[2]:
-        legume = st.selectbox( "Légume", ['Tout']+list(np.unique(state.recoltes['legume'] ) ))
-    if legume != 'Tout':
-        with cols[3]:
-            variete = st.selectbox( "Variété", ['Tout']+list(np.unique(state.recoltes[state.recoltes['legume']==legume]['variete'].dropna() ) ))
+    if state.current_user == None :
+        st.error("Veuillez vous connecter ou créer un compte avant d'accéder à cette page")
     else :
-        variete = 'Tout'
-    #st.dataframe(state.recoltes)
-    to_display = state.recoltes.copy()
-    if legume != 'Tout' :
-        to_display = to_display[to_display['legume']==legume]
-    if variete != 'Tout' :
-        to_display = to_display[to_display['variete']==variete]
-
-    if not to_display.empty:
-        st.write('Total des récoltes sur la période : '+str( to_display['poids'].sum() ))
-        fig = px.bar(to_display,
-                     x="date",
-                     y="poids",
-                     color="legume",
-                     color_discrete_map=colors_to_discret_map(state.colors),
-                     text="variete",
-                     barmode="stack")
-        fig.update_layout(
-            xaxis=dict(
-                rangeselector=dict(
-                    buttons=list([
-                        dict(count=1,
-                             label="1d",
-                             step="day",
-                             stepmode="backward"),
-                        dict(count=7,
-                             label="1s",
-                             step="day",
-                             stepmode="backward"),
-                        dict(count=1,
-                             label="1m",
-                             step="month",
-                             stepmode="backward"),
-                        dict(count=1,
-                             label="YTD",
-                             step="year",
-                             stepmode="todate"),
-                        dict(count=1,
-                             label="1y",
-                             step="year",
-                             stepmode="backward"),
-                        dict(step="all")
-                    ])
-                ),
-                rangeslider=dict(
-                    visible=True
-                ),
-                type="date"
-            )
-        )
-        fig.update_layout(
-            title_text="Récoltes en grammes"
-        )
-        st.plotly_chart( fig )
-    else:
-        st.warning('Rien ne correspond aux critères demandés ou alors la base de donnée est vide.')
-
-    with st.beta_expander("Ajouter une récolte :") :
-        #Initialisation de la variable pour éviter le bug
-        new_variete = ''
-        cols = st.beta_columns([1,1,1])
+        cols = st.beta_columns([1,1,1,1])
         with cols[0]:
-            date_recolte = st.date_input('Date', date.today() )
-        cols = st.beta_columns([1,1,1])
-        cols_if = st.beta_columns([1,1,1])
-        with cols[0]:
-            new_legume = st.selectbox( "Légume", ['']+list(np.unique(state.recoltes['legume']) )+['Autre'])
-
-        if new_legume == 'Autre':
-            with cols_if[0]:
-                new_legume = st.text_input("Nouveau légume")
-
-        if new_legume != '':
-            with cols[1]:
-                new_variete = st.selectbox( "Variété", ['']+list(np.unique(state.recoltes[state.recoltes['legume']==new_legume]['variete'].dropna() ))+['Autre'] )
-        if new_variete == 'Autre':
-            with cols_if[1]:
-                new_variete = st.text_input("Nouvelle variété")
-
-
-        cols = st.beta_columns([1,1,1])
-        with cols[0]:
-            nombre = st.number_input('Nombre',0,50,1,help="Mettre 0 si l'on ne peut pas compter")
+            date_depuis = st.date_input('Depuis', date(date.today().year,1,1) )
         with cols[1]:
-            poids = st.number_input('Poids (g)',0,10000,0)
+            date_jusqua = st.date_input("Jusqu'à", date(date.today().year,12,31) )
+        with cols[2]:
+            legume = st.selectbox( "Légume", ['Tout']+list(np.unique(state.recoltes['legume'] ) ))
+        if legume != 'Tout':
+            with cols[3]:
+                variete = st.selectbox( "Variété", ['Tout']+list(np.unique(state.recoltes[state.recoltes['legume']==legume]['variete'].dropna() ) ))
+        else :
+            variete = 'Tout'
 
-        photopath = st.file_uploader('Ajoutes une photo de ta récolte !', type = ['jpeg','jpg','png','pdf'])
-        # if file is uploaded
-        if photopath is not None:
-            file_details = {'file_name ': photopath.name,
-                            'file_size ': photopath.size,
-                            'file_type ': photopath.type}
+        to_display = state.recoltes.copy()
+        to_display = to_display[to_display['user']==state.current_user]
+        if legume != 'Tout' :
+            to_display = to_display[to_display['legume']==legume]
+        if variete != 'Tout' :
+            to_display = to_display[to_display['variete']==variete]
 
-        recolte = Recolte(legume = new_legume, date = date_recolte, poids = poids, variete = new_variete, nombre = nombre, photopath = photopath)
-        cols = st.beta_columns([1,1,1])
-        if st.button("Save"):
-            if ( new_legume == '' or poids == 0 ) :
-                st.error("Attention, il faut spécifier un légume et le poids !")
-            else:
-                state.recoltes  = save_recolte(state.recoltes, recolte, state.db_path )
-                st.info("Récolte ajoutée avec succès !")
+        if not to_display.empty:
+            st.write('Total des récoltes sur la période : '+str( to_display['poids'].sum() ))
+            fig = px.bar(to_display,
+                         x="date",
+                         y="poids",
+                         color="legume",
+                         color_discrete_map=colors_to_discret_map(state.colors),
+                         text="variete",
+                         barmode="stack"
+                         )
+            fig.update_layout(
+                xaxis=dict(
+                    rangeselector=dict(
+                        buttons=list([
+                            dict(count=1,
+                                 label="1d",
+                                 step="day",
+                                 stepmode="backward"),
+                            dict(count=7,
+                                 label="1s",
+                                 step="day",
+                                 stepmode="backward"),
+                            dict(count=1,
+                                 label="1m",
+                                 step="month",
+                                 stepmode="backward"),
+                            dict(count=1,
+                                 label="YTD",
+                                 step="year",
+                                 stepmode="todate"),
+                            dict(count=1,
+                                 label="1y",
+                                 step="year",
+                                 stepmode="backward"),
+                            dict(step="all")
+                        ])
+                    ),
+                    rangeslider=dict(
+                        visible=True
+                    ),
+                    type="date"
+                )
+            )
+            fig.update_layout(
+                title_text="Récoltes en grammes"
+            )
+            st.plotly_chart( fig , use_container_width = True)
+        else:
+            st.warning("Rien ne correspond aux critères demandés, peut-être n'avez vous pas encore entré de récoltes.")
+
+        with st.beta_expander("Ajouter une récolte :") :
+            #Initialisation de la variable pour éviter le bug
+            new_variete = ''
+            cols = st.beta_columns([1,1,1])
+            with cols[0]:
+                date_recolte = st.date_input('Date', date.today() )
+            cols = st.beta_columns([1,1,1])
+            cols_if = st.beta_columns([1,1,1])
+            with cols[0]:
+                new_legume = st.selectbox( "Légume", ['']+list(np.unique(state.recoltes['legume']) )+['Autre'])
+
+            if new_legume == 'Autre':
+                with cols_if[0]:
+                    new_legume = st.text_input("Nouveau légume")
+
+            if new_legume != '':
+                with cols[1]:
+                    new_variete = st.selectbox( "Variété", ['']+list(np.unique(state.recoltes[state.recoltes['legume']==new_legume]['variete'].dropna() ))+['Autre'] )
+            if new_variete == 'Autre':
+                with cols_if[1]:
+                    new_variete = st.text_input("Nouvelle variété")
+
+            cols = st.beta_columns([1,1,1])
+            with cols[0]:
+                nombre = st.number_input('Nombre',0,100,1,help="Mettre 0 si l'on ne peut pas compter")
+            with cols[1]:
+                poids = st.number_input('Poids (g)',0,100000,0)
+
+            photopath = st.file_uploader('Ajoutes une photo de ta récolte !', type = ['jpeg','jpg','png','pdf'])
+            # if file is uploaded
+            if photopath is not None:
+                file_details = {'file_name ': photopath.name,
+                                'file_size ': photopath.size,
+                                'file_type ': photopath.type}
+
+            recolte = Recolte(legume = new_legume, date = date_recolte, poids = poids, variete = new_variete, nombre = nombre, photopath = photopath)
+            cols = st.beta_columns([1,1,1])
+            if st.button("Save"):
+                if ( new_legume == '' or poids == 0 ) :
+                    st.error("Attention, il faut spécifier un légume et le poids !")
+                else:
+                    state.recoltes  = save_recolte(state.recoltes, recolte, state.db_path )
+                    st.info("Récolte ajoutée avec succès !")
 
 
 def menu_meteo(state):
@@ -249,11 +267,18 @@ def menu_meteo(state):
     if not correct_key :
         st.warning("Invalid API key for Openweathermap, please make sure the file contains a correct one or send message to developper.")
 
-    # TODO: Check if user has favorite city
 
     cols = st.beta_columns([1,2])
+
+    if state.current_user != None :
+        default_city = state.users[state.users['username']==state.current_user].reset_index()["city"][0]
+        if default_city == None :
+            default_city = "Eysines"
+    else :
+        default_city = "Eysines"
+
     with cols[0]:
-        city = st.text_input("Choisir une ville : ","Eysines")
+        city = st.text_input("Choisir une ville : ",default_city)
     if city != '':
         weather_html = get_weather_from_city(city = city, key = key, addons = '&units=metric&mode=html&lang=fr').text
         if 'city not found' in weather_html:
@@ -291,9 +316,70 @@ def menu_meteo(state):
 
 
 
-def menu_stats(state):
-    st.write('unavailable')
-    # TODO: tout
+def menu_compte(state):
+    if state.current_user == None:
+        st.write("### Connectes toi :")
+        cols = st.beta_columns([1,1,1])
+        with cols[0]:
+            username = st.text_input("Nom d'utilisateur: ", value="nanou")
+        with cols[1]:
+            password = st.text_input("Password: ", value="", type="password")
+
+        if username in state.users['username'].values and password in state.users['password'].values :
+            state.current_user = username
+
+
+        with st.beta_expander("Nom d'utilisateur ou mot de passe oublié ?"):
+            sent = False
+            cols = st.beta_columns([1,1,1])
+            with cols[0]:
+                retrieve_mail = st.text_input("Adresse mail", value = "")
+            with cols[1]:
+                if st.button("Retrouver mon mot de passe") :
+                    if retrieve_mail == "" or not re.match('[^@]+@[^@]+\.[^@]+' , retrieve_mail):
+                        st.error("L'adresse mail est vide ou semble incorrecte. Veuillez en entrer une autre.")
+                    elif retrieve_mail not in state.users["mail"].values :
+                        st.error("L'adresse mail ne semble pas être dans la base de donnée")
+                    else :
+                        send_mail_retrieve_info(retrieve_mail, state.users)
+                        sent = True
+            if sent : st.success("Un email a été envoyé à l'adresse suivante : " + retrieve_mail)
+
+
+        st.write("### Ou créer un nouveau compte ")
+        with st.beta_expander("Nouveau compte"):
+            cols = st.beta_columns([1,1,1])
+            with cols[0]:
+                username = st.text_input("Nom de l'utilisateur:", value ="")
+                mail = st.text_input("Adresse mail:",value = "", help="Uniquement pour se souvenir du mot de passe")
+
+            with cols[1]:
+                password = st.text_input("Mot de passe:", value = "", type = "password", help = "Mettre un mot de passe simple, attention")
+                city = st.text_input("Ville favorite:",value = "", help="Pour la météo")
+
+            if st.button("Enregistrer"):
+                if username == "" or username in state.users['username'].values :
+                    st.error("Le nom d'utilisateur est vide ou déjà pris. Veuillez en entrer un autre")
+                elif password == "":
+                    st.error("Le mot de passe est vide. Veuillez en entrer un.")
+                elif mail == "" or not re.match('[^@]+@[^@]+\.[^@]+' , mail) or mail in state.users["mail"].values :
+                    st.error("L'adresse mail est vide, déjà pris ou semble incorrecte. Veuillez en entrer une autre.")
+                else :
+                    state.users = add_user(username, password, mail, city, state.users, state.home_path + 'data/users.csv')
+                    st.info("Utilisateur ajouté et connecté")
+                    state.current_user = username
+
+            st.warning("Attention, l'application est en cours de création et nous ne pouvons garantir la protection parfaite des données.\n Néanmoins, ces données ne seront pas utilisées à des fins commerciales et/ou malhonnête. ")
+
+    else :
+        st.write('## Bienvenu sur ton espace personnel ' + state.current_user)
+
+
+
+
+        with st.beta_columns([1,1,1])[0]:
+            if st.button("Déconnexion"):
+                state.current_user = None
 
 
 def main():
@@ -308,23 +394,24 @@ def main():
             state.db_path = path + 'data/recoltes.csv'
             state.recoltes = load_recoltes(state.db_path)
             state.colors = load_colors(path + 'data/colors.csv', state.recoltes)
+            state.users = pd.read_csv(path + 'data/users.csv') # to get all registrated users
 
     if state.db_path == None :
         st.error("Le chemin vers la bdd n'existe pas")
-    possibilities = ["Accueil", "Récoltes", "Météo", "Stats"]
+    possibilities = ["Accueil", "Récoltes", "Météo", "Compte"]
     choice = st.sidebar.selectbox("Menu",possibilities)
 
 
 
     if choice == 'Accueil':
-        #menu_meteo(state)
+        #menu_compte(state)
         menu_home(state)
     elif choice == 'Récoltes':
         menu_recoltes(state)
     elif choice == 'Météo':
         menu_meteo(state)
-    elif choice == 'Stats':
-        menu_stats(state)
+    elif choice == 'Compte':
+        menu_compte(state)
 
     # Mandatory to avoid rollbacks with widgets, must be called at the end of your app
     state.sync()
