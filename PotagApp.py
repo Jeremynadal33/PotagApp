@@ -240,14 +240,7 @@ def menu_recoltes(state):
             with cols[1]:
                 poids = st.number_input('Poids (g)',0,100000,0)
 
-            photopath = st.file_uploader('Ajoutes une photo de ta récolte !', type = ['jpeg','jpg','png','pdf'])
-            # if file is uploaded
-            if photopath is not None:
-                file_details = {'file_name ': photopath.name,
-                                'file_size ': photopath.size,
-                                'file_type ': photopath.type}
-
-            recolte = Recolte(legume = new_legume, date = date_recolte, poids = poids, variete = new_variete, nombre = nombre, photopath = photopath)
+            recolte = Recolte(legume = new_legume, date = date_recolte, poids = poids, variete = new_variete, nombre = nombre, photopath = None)
             cols = st.beta_columns([1,1,1])
             if st.button("Save"):
                 if ( new_legume == '' or poids == 0 ) :
@@ -255,6 +248,27 @@ def menu_recoltes(state):
                 else:
                     state.recoltes  = save_recolte(state.recoltes, recolte, state.db_path, state.current_user )
                     st.info("Récolte ajoutée avec succès !")
+
+        with st.beta_expander("Ajoutes une photo :"):
+            st.warning("Tu ne peux ajouter qu'une photo par date. \nAttention, cela peut prendre plusieurs dizaines de secondes.")
+            cols = st.beta_columns([1,2])
+            with cols[0]:
+                date_photo = st.date_input('Date :', date.today() )
+            with cols[1]:
+                photopath = st.file_uploader('Ajoutes une photo de ta récolte !', type = ['jpeg','jpg','png','pdf'])
+            # if file is uploaded
+            if photopath is not None:
+                file_details = {'file_name': photopath.name,
+                                'file_size': photopath.size,
+                                'file_type': photopath.type}
+
+            if st.button("Save  "):
+                #print(file_details['file_name'])
+                #if os.path.exists(file_details['file_name']):
+                save_photo_recolte(photopath, date_photo = date_photo, username= state.current_user, bucket_name = 'potagapp-bucket')
+                #else:
+                #    st.error('Fichier non trouvé')
+
 
 
 def menu_meteo(state):
@@ -373,8 +387,6 @@ def menu_compte(state):
 
     else :
         st.write('## Bienvenu sur ton espace personnel ' + state.current_user)
-
-
 
 
         with st.beta_columns([1,1,1])[0]:

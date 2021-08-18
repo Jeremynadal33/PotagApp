@@ -9,7 +9,7 @@ import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
-
+import os
 def load_recoltes(path):
     data = pd.read_csv(path)
     data['date'] = pd.to_datetime(data['date'])
@@ -47,6 +47,16 @@ def save_recolte(df_recoltes, recolte, file_path, username):
     df_recoltes.to_csv(file_path, index = False)
     return df_recoltes
 
+def save_photo_recolte(photopath, date_photo, username, bucket_name = 'potagapp-bucket'):
+    obj_name = username + '/' + str(date_photo.day) + '_' + str(date_photo.month) + '_' + str(date_photo.year) + '.' + photopath.type.split('/')[-1]
+    save_uploadedfile(photopath)
+    upload_file_to_bucket(file_name="tempDir/"+str(photopath.name), bucket=bucket_name, object_name=obj_name)
+
+
+def save_uploadedfile(uploadedfile):
+     with open(os.path.join("tempDir",uploadedfile.name),"wb") as f:
+         f.write(uploadedfile.getbuffer())
+     return st.success('File on ec2')
 
 def add_user(username, password, mail, city, df_users, file_path):
     to_append = {
@@ -352,3 +362,67 @@ def get_figs_KPIs(KPIs):
     )
 
     return fig
+
+######### For using boto ##########
+import logging
+import boto3
+from botocore.exceptions import ClientError
+
+def create_bucket(bucket_name, region=None):
+    """Create an S3 bucket in a specified region
+
+    If a region is not specified, the bucket is created in the S3 default
+    region (us-east-1).
+
+    :param bucket_name: Bucket to create
+    :param region: String region to create bucket in, e.g., 'us-west-2'
+    :return: True if bucket created, else False
+    """
+
+    # Create bucket
+    try:
+        if region is None:
+            s3_client = boto3.client('s3')
+            s3_client.create_bucket(Bucket=bucket_name)
+        else:
+            s3_client = boto3.client('s3', region_name=region)
+            location = {'LocationConstraint': region}
+            s3_client.create_bucket(Bucket=bucket_name,
+                                    CreateBucketConfiguration=location)
+    except ClientError as e:
+        logging.error(e)
+        return False
+    return True
+
+
+def list_my_buckets():
+    # Retrieve the list of existing buckets
+    s3 = boto3.client('s3')
+    response = s3.list_buckets()
+
+    # Output the bucket names
+    print('Existing buckets:')
+    for bucket in response['Buckets']:
+        print(f'  {bucket["Name"]}')
+
+def upload_file_to_bucket(file_name, bucket, object_name=None):
+    """Upload a file to an S3 bucket
+
+    :param file_name: File to upload
+    :param bucket: Bucket to upload to
+    :param object_name: S3 object name. If not specified then file_name is used
+    :return: True if file was uploaded, else False
+    """
+
+    # If S3 object_name was not specified, use file_name
+    if object_name is None:
+        object_name = os.path.basename(file_name)
+
+    # Upload the file
+    s3_client = boto3.client('s3')
+    try:
+        response = s3_client.upload_file(file_name, bucket, object_name)
+    except ClientError as e:
+        logging.error(e)
+        return st.error("Attention, une erreur inconnue est arrivée. L'image n'est pas en ligne.")
+    return st.success("Image mise en ligne.")
