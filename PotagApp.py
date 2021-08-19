@@ -388,7 +388,61 @@ def menu_compte(state):
     else :
         st.write('## Bienvenu sur ton espace personnel ' + state.current_user)
 
+        ## TODO: modifier mot de passe, ville favorite, telecharger recoltes perso en csv
+        ## TODO: pour nous, télécharger toutes les récoltes, plus users
 
+        with st.beta_expander("Gallerie d'images :"):
+            files = list_objects_in_bucket('potagapp-bucket', state.current_user)
+            download_objects_from_bucket('potagapp-bucket', files, state.current_user)
+            for file in files :
+                st.image('tempDir/'+file, width = 200, caption = file.split('/')[-1])
+                st.write('###')
+
+        st.write('### Modification des informations :')
+        cols = st.beta_columns([1,1,1])
+
+        current_info = state.users[state.users['username']==state.current_user]
+        current_info = current_info.reset_index()
+
+        with cols[0]:
+            new_mdp = st.text_input("Mot de passe :",value=current_info['password'][0])
+            new_email = st.text_input("Adresse email :",value=current_info['mail'][0])
+            new_city = st.text_input("Ville favorite :",value=current_info['city'][0])
+
+        cols = st.beta_columns([1,1,1])
+
+        if st.button('Modifier les infos'):
+            state.users = modify_user(state.current_user, new_mdp, new_email, new_city, state.users, state.home_path + 'data/users.csv')
+            st.info("Modifications enregistées")
+
+        st.write("###")
+        if state.current_user == 'nanou':
+            # Plus de possibilités
+            with st.beta_expander("Possibilités de nanous"):
+                if st.button("Supprimer tempDir"):
+                    cols = st.beta_columns([1,1,1])
+                    with cols[0]:
+                        st.warning("Est tu sur de vouloir vider le dossier temporaire ? ")
+                    with cols[1]:
+                        if st.button('Oui, sur'):
+                            os.system('rm -Rf tempDir')
+                            os.mkdir("tempDir")
+                cols = st.beta_columns([1,1,1])
+                with cols[0]:
+                    valid_recoltes = st.button("Voir récoltes")
+                    valid_users = st.button("Voir users")
+                with cols[1]:
+                    if st.button("Dl récoltes"):
+                        st.markdown(get_table_download_link(state.recoltes,'recoltes'), unsafe_allow_html=True)
+
+                    if st.button("Dl users"):
+                        st.markdown(get_table_download_link(state.users,'users'), unsafe_allow_html=True)
+
+                if valid_recoltes:
+                    st.dataframe(state.recoltes)
+                if valid_users:
+                    st.dataframe(state.users)
+        st.write("###")
         with st.beta_columns([1,1,1])[0]:
             if st.button("Déconnexion"):
                 state.current_user = None
@@ -416,7 +470,6 @@ def main():
 
 
     if choice == 'Accueil':
-        #menu_compte(state)
         menu_home(state)
     elif choice == 'Récoltes':
         menu_recoltes(state)

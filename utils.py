@@ -10,6 +10,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
 import os
+
+import base64
+
 def load_recoltes(path):
     data = pd.read_csv(path)
     data['date'] = pd.to_datetime(data['date'])
@@ -75,6 +78,27 @@ def add_user(username, password, mail, city, df_users, file_path):
     text += "Jardines bien !"
     send_mail(mail, "Bienvenu à la PotagApp", text)
     return df_users
+
+def modify_user(username, password, mail, city, df_users, file_path):
+    to_append = {
+        'username' : username,
+        'password' : password,
+        'mail' : mail,
+        'city' : city
+    }
+    print('oui')
+    df_users = df_users.loc[ df_users['username'] != username ]
+    df_users = df_users.append(to_append, ignore_index = True)
+    df_users.to_csv(file_path, index = False)
+    text = "Bonjour de la PotagApp " + username + ',\n'
+    text += "Pour rappel, tes nouvelles informations sont :\n"
+    text += "Mot de passe : " + password +"\n"
+    text += "Mail : " + mail +"\n"
+    text += "Ville : " + city +"\n"
+    text += "Jardines bien !"
+    send_mail(mail, "Modification d'informations", text)
+    return df_users
+
 
 def send_mail_retrieve_info(mail, users):
     user = users[users['mail']==mail].reset_index(drop=True)
@@ -405,6 +429,28 @@ def list_my_buckets():
     for bucket in response['Buckets']:
         print(f'  {bucket["Name"]}')
 
+def list_objects_in_bucket(bucket_name, username = None):
+    s3 = boto3.client("s3")
+    objects = s3.list_objects(Bucket = bucket_name ,Prefix=username)
+    photopaths = []
+    for obj in objects['Contents']:
+        photopaths.append(obj['Key'])
+    return photopaths
+
+
+def download_objects_from_bucket(bucket_name, file_names, username):
+    s3 = boto3.client('s3')
+    # First, check if directory exists
+    if os.path.exists('tempDir/' + username) :
+        for file in file_names :
+            if not os.path.exists('tempDir' + '/' + file):
+                s3.download_file(bucket_name, file, 'tempDir/' + username + '/' +file.split('/')[-1])
+    else:
+        os.mkdir('tempDir/' + username)
+        for file in file_names:
+            s3.download_file(bucket_name, file, 'tempDir/' + username + '/' +file.split('/')[-1])
+
+
 def upload_file_to_bucket(file_name, bucket, object_name=None):
     """Upload a file to an S3 bucket
 
@@ -426,3 +472,13 @@ def upload_file_to_bucket(file_name, bucket, object_name=None):
         logging.error(e)
         return st.error("Attention, une erreur inconnue est arrivée. L'image n'est pas en ligne.")
     return st.success("Image mise en ligne.")
+
+def get_table_download_link(df, name):
+    """Generates a link allowing the data in a given panda dataframe to be downloaded
+    in:  dataframe
+    out: href string
+    """
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}" download="'+ name +'.csv">Dl ' + name +' file</a>'
+    return href
