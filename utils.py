@@ -88,7 +88,6 @@ def modify_user(username, password, mail, city, df_users, file_path):
         'mail' : mail,
         'city' : city
     }
-    print('oui')
     df_users = df_users.loc[ df_users['username'] != username ]
     df_users = df_users.append(to_append, ignore_index = True)
     df_users.to_csv(file_path, index = False)
@@ -443,30 +442,34 @@ def list_objects_in_bucket(bucket_name, username = None):
         day = int(file.split('/')[-1].split('.')[0].split('_')[0])
         to_append = {'file_name': file ,
                      'date': date(year, month, day)}
-        print(to_append)
         df = df.append(to_append,ignore_index=True)
 
         #photopaths.append()
     df = df.sort_values('date', ascending = False).reset_index(drop=True)
-    print(df)
     return df['file_name']
 
 
 def download_objects_from_bucket(bucket_name, file_names, username):
     s3 = boto3.client('s3')
+    paths = []
     # First, check if directory exists
     if os.path.exists('tempDir/' + username) :
         for file in file_names :
+            paths.append('tempDir/'+file)
             if not os.path.exists('tempDir' + '/' + file):
                 s3.download_file(bucket_name, file, 'tempDir/' + username + '/' +file.split('/')[-1])
     else:
         os.mkdir('tempDir/' + username)
         for file in file_names:
             s3.download_file(bucket_name, file, 'tempDir/' + username + '/' +file.split('/')[-1])
+            paths.append('tempDir/'+file)
+    return paths
+
+
 @st.cache
 def ram_objects_from_bucket(bucket_name, file_names, username):
     images = []
-    s3 = boto3.resource('s3', region_name='eu-west-1')
+    s3 = boto3.resource('s3', region_name='eu-west-3')
     bucket = s3.Bucket(bucket_name)
 
     for file in file_names:

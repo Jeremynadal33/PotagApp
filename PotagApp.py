@@ -393,14 +393,20 @@ def menu_compte(state):
 
         with st.beta_expander("Gallerie d'images :"):
             files = list_objects_in_bucket('potagapp-bucket', state.current_user)
-            print(files)
-            images = ram_objects_from_bucket('potagapp-bucket', files, state.current_user)
+
+            #images = ram_objects_from_bucket('potagapp-bucket', files, state.current_user)
+            # not working in ec2 : maybe ram isnt suffisiant
+            paths = download_objects_from_bucket('potagapp-bucket', files, state.current_user)
             cols = st.beta_columns([1,1,1])
             with cols[1]:
-                for id in range(len(images)) :
-                    st.image(images[id],width=200, caption = files[id].split('/')[-1])
+                for id in range(len(files)) :
+                    #st.image(images[id],width=200, caption = files[id].split('/')[-1])
+                    st.image(Image.open(paths[id]),width=200, caption = files[id].split('/')[-1])
 
                     st.write("###")
+
+
+
         st.write('### Modification des informations :')
         cols = st.beta_columns([1,1,1])
 
