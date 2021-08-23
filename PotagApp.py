@@ -4,7 +4,7 @@ import numpy as np
 import time
 import os
 import re
-from PIL import Image
+
 
 from io import BytesIO
 from streamlit.hashing import _CodeHasher
@@ -16,7 +16,7 @@ from geopy.geocoders import Nominatim
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import date
+
 
 try:
     # Before Streamlit 0.65
@@ -393,11 +393,14 @@ def menu_compte(state):
 
         with st.beta_expander("Gallerie d'images :"):
             files = list_objects_in_bucket('potagapp-bucket', state.current_user)
-            download_objects_from_bucket('potagapp-bucket', files, state.current_user)
-            for file in files :
-                st.image('tempDir/'+file, width = 200, caption = file.split('/')[-1])
-                st.write('###')
+            print(files)
+            images = ram_objects_from_bucket('potagapp-bucket', files, state.current_user)
+            cols = st.beta_columns([1,1,1])
+            with cols[1]:
+                for id in range(len(images)) :
+                    st.image(images[id],width=200, caption = files[id].split('/')[-1])
 
+                    st.write("###")
         st.write('### Modification des informations :')
         cols = st.beta_columns([1,1,1])
 

@@ -10,8 +10,10 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
 import os
-
+from PIL import Image
 import base64
+
+from datetime import date
 
 def load_recoltes(path):
     data = pd.read_csv(path)
@@ -433,9 +435,21 @@ def list_objects_in_bucket(bucket_name, username = None):
     s3 = boto3.client("s3")
     objects = s3.list_objects(Bucket = bucket_name ,Prefix=username)
     photopaths = []
+    df = pd.DataFrame(columns=['file_name','date'])
     for obj in objects['Contents']:
-        photopaths.append(obj['Key'])
-    return photopaths
+        file = obj['Key']
+        year = int(file.split('/')[-1].split('.')[0].split('_')[-1])
+        month = int(file.split('/')[-1].split('.')[0].split('_')[1])
+        day = int(file.split('/')[-1].split('.')[0].split('_')[0])
+        to_append = {'file_name': file ,
+                     'date': date(year, month, day)}
+        print(to_append)
+        df = df.append(to_append,ignore_index=True)
+
+        #photopaths.append()
+    df = df.sort_values('date', ascending = False).reset_index(drop=True)
+    print(df)
+    return df['file_name']
 
 
 def download_objects_from_bucket(bucket_name, file_names, username):
@@ -449,6 +463,19 @@ def download_objects_from_bucket(bucket_name, file_names, username):
         os.mkdir('tempDir/' + username)
         for file in file_names:
             s3.download_file(bucket_name, file, 'tempDir/' + username + '/' +file.split('/')[-1])
+@st.cache
+def ram_objects_from_bucket(bucket_name, file_names, username):
+    images = []
+    s3 = boto3.resource('s3', region_name='eu-west-1')
+    bucket = s3.Bucket(bucket_name)
+
+    for file in file_names:
+        object = bucket.Object(file)
+        response = object.get()
+        file_stream = response['Body']
+        images.append(Image.open(file_stream))
+
+    return images
 
 
 def upload_file_to_bucket(file_name, bucket, object_name=None):
