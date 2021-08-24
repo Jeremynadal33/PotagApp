@@ -6,6 +6,7 @@ import os
 import re
 
 
+
 from io import BytesIO
 from streamlit.hashing import _CodeHasher
 from utils import *
@@ -246,7 +247,7 @@ def menu_recoltes(state):
                 if ( new_legume == '' or poids == 0 ) :
                     st.error("Attention, il faut spécifier un légume et le poids !")
                 else:
-                    state.recoltes  = save_recolte(state.recoltes, recolte, state.db_path, state.current_user )
+                    state.recoltes  = save_recolte(state.recoltes, recolte, state.current_user, state.host, state.username, state.password, state.dbname )
                     st.info("Récolte ajoutée avec succès !")
 
         with st.beta_expander("Ajoutes une photo :"):
@@ -466,13 +467,17 @@ def main():
     for path in home_path:
         if os.path.exists(path):
             state.home_path = path
-            state.db_path = path + 'data/recoltes.csv'
-            state.recoltes = load_recoltes(state.db_path)
+            try :
+                state.identifier, state.username, state.password, state.host, state.port, state.dbname = read_rds_infos(state.home_path + 'rds_infos.txt')
+            except:
+                state.identifier, state.username, state.password, state.host, state.port, state.dbname = read_rds_infos(state.home_path +  '../.secrets/rds_infos.txt')
+
+            state.recoltes = load_recoltes(host = state.host, username = state.username, password = state.password, dbname = state.dbname)
             state.colors = load_colors(path + 'data/colors.csv', state.recoltes)
             state.users = pd.read_csv(path + 'data/users.csv') # to get all registrated users
 
-    if state.db_path == None :
-        st.error("Le chemin vers la bdd n'existe pas")
+
+
     possibilities = ["Accueil", "Récoltes", "Météo", "Compte"]
     choice = st.sidebar.selectbox("Menu",possibilities)
 

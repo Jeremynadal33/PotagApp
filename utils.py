@@ -12,13 +12,15 @@ import streamlit as st
 import os
 from PIL import Image
 import base64
-
+import pymysql
 from datetime import date
 
-def load_recoltes(path):
-    data = pd.read_csv(path)
+def load_recoltes(host, username, password, dbname):
+    db, cursor = connect_to_database(host, username, password, dbname)
+    data = pd.read_sql('select * from recoltes', db)
     data['date'] = pd.to_datetime(data['date'])
     return data
+
 
 
 def load_colors(path, recoltes) :
@@ -38,19 +40,20 @@ def colors_to_discret_map(colors):
 
     return dict
 
-def save_recolte(df_recoltes, recolte, file_path, username):
-    to_append = {
-        'legume' : recolte.get_legume(),
-        'date' : recolte.get_date(),
-        'poids' : recolte.get_poids(),
-        'variete' : recolte.get_variete(),
-        'nombre' : recolte.get_nombre(),
-        'photopath' : recolte.get_photopath(),
-        'user' : username
-    }
-    df_recoltes = df_recoltes.append(to_append, ignore_index = True)
-    df_recoltes.to_csv(file_path, index = False)
-    return df_recoltes
+def save_recolte(df_recoltes, recolte, current_username, host, username, password, dbname):
+    db, cursor = connect_to_database(host, username, password, dbname)
+
+    add_recolte_to_rds(cursor = cursor,
+                       legume = recolte.get_legume(),
+                       poids = recolte.get_poids(),
+                       date = recolte.get_date(),
+                       user = current_username,
+                       variete = recolte.get_variete(),
+                       nombre = recolte.get_nombre())
+
+    data = pd.read_sql('select * from recoltes', db)
+    data['date'] = pd.to_datetime(data['date'])
+    return data
 
 def save_photo_recolte(photopath, date_photo, username, bucket_name = 'potagapp-bucket'):
     obj_name = username + '/' + str(date_photo.day) + '_' + str(date_photo.month) + '_' + str(date_photo.year) + '.' + photopath.type.split('/')[-1]
@@ -512,3 +515,33 @@ def get_table_download_link(df, name):
     b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
     href = f'<a href="data:file/csv;base64,{b64}" download="'+ name +'.csv">Dl ' + name +' file</a>'
     return href
+
+
+
+### For remote database access
+def read_rds_infos(path):
+    file = open(path)
+    identifier = file.readline().split(':')[-1][:-1]
+    username = file.readline().split(':')[-1][:-1]
+    password = file.readline().split(':')[-1][:-1]
+    host = file.readline().split(':')[-1][:-1]
+    port = file.readline().split(':')[-1][:-1]
+    dbname = file.readline().split(':')[-1][:-1]
+    return identifier, username, password, host, port, dbname
+
+def connect_to_database(host, username, password, dbname):
+    rds_db = pymysql.connect(host = host,
+                         user = username,
+                         password = password,
+                         db = dbname,
+                         autocommit = True)
+    rds_cursor = rds_db.cursor()
+
+    return rds_db, rds_cursor
+
+def add_recolte_to_rds(cursor, legume, poids, date, user, variete = None, nombre = 0):
+    sql = '''
+    insert into recoltes (legume, poids, date, user, variete, nombre) values ('%s', '%d', '%s', '%s', '%s', '%d')
+    ''' % (legume, poids, date, user, variete, nombre)
+
+    cursor.execute(sql)
